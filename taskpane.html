@@ -311,9 +311,9 @@
   <p class="api-hint">API key nội bộ công ty · Lưu tự động trong máy</p>
 
   <!-- Model info (hardcoded) -->
-  <input type="hidden" id="model-select" value="gpt-oss-20b"/>
+  <input type="hidden" id="model-select" value="openai/gpt-oss-20b"/>
   <div class="api-info" style="margin-top:6px;">
-    <strong>Endpoint:</strong> maas-llm-aiplatform-hcm.api.vngcloud.vn &nbsp;·&nbsp; <strong>Model:</strong> gpt-oss-20b
+    <strong>Endpoint:</strong> maas-llm-aiplatform-hcm.api.vngcloud.vn &nbsp;·&nbsp; <strong>Model:</strong> openai/gpt-oss-20b
   </div>
 
   <hr/>
@@ -407,26 +407,20 @@
       : 'You are a professional contract writing assistant. Write clear, concise product descriptions suitable for service contracts.';
 
     const userPrompt = lang === 'vi'
-      ? `Dựa trên thông tin về sản phẩm "${productName}" của GreenNode VNG Cloud (tham khảo từ ${url}), hãy viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ.
-
-QUAN TRỌNG: Viết theo đúng thứ tự từ trên xuống dưới như sau, KHÔNG đảo ngược:
-
+      ? `Dựa trên thông tin về sản phẩm "${productName}" của GreenNode VNG Cloud (tham khảo từ ${url}), hãy viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ, bao gồm:
 1. Tên sản phẩm và mô tả tổng quan (2-3 câu)
 2. Tính năng chính (3-5 điểm, dùng dấu gạch đầu dòng "-")
 3. Cam kết dịch vụ / SLA nổi bật nếu có
 
-Bắt đầu bằng tên sản phẩm, sau đó mô tả tổng quan, rồi mới đến tính năng và SLA. Viết bằng tiếng Việt, giọng văn chuyên nghiệp.`
-      : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract.
-
-IMPORTANT: Write in this exact order from top to bottom, do NOT reverse:
-
+Viết bằng tiếng Việt, giọng văn chuyên nghiệp.`
+      : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract including:
 1. Product name and overview (2-3 sentences)
 2. Key features (3-5 bullet points using "-")
 3. Notable SLA commitments if available
 
-Start with the product name and overview, then features, then SLA. Write in professional English.`;
+Write in professional English.`;
 
-    const res = await fetch('https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1/chat/completions', {
+    const res = await fetch('https://wordgen.thinhthomas2000.workers.dev', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -453,31 +447,33 @@ Start with the product name and overview, then features, then SLA. Write in prof
   /* ── Insert into Word ── */
   async function insertIntoWord(productName, content) {
     return Word.run(async (context) => {
-      const selection = context.document.getSelection();
+      const doc = context.document;
+      const selection = doc.getSelection();
+
+      // Build paragraphs to insert (reverse order since we insert "before")
       const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
 
-      // Insert heading first
-      const heading = selection.insertParagraph(productName, Word.InsertLocation.before);
-      heading.styleBuiltIn = Word.BuiltInStyleName.heading2;
-      await context.sync();
+      // Insert from bottom to top to preserve order
+      // First insert a blank line after
+      const blank = selection.insertParagraph('', Word.InsertLocation.before);
 
-      // Get the heading range to insert after it
-      let lastRange = heading;
-
-      // Insert each line after the previous one (top to bottom order)
-      for (const line of lines) {
+      // Insert content lines in reverse
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
         const isBullet = /^[-•*]\s+/.test(line);
         const text = isBullet ? line.replace(/^[-•*]\s+/, '') : line;
-        const para = lastRange.insertParagraph(text, Word.InsertLocation.after);
+
+        const para = selection.insertParagraph(text, Word.InsertLocation.before);
+
         if (isBullet) {
           para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
         }
-        lastRange = para;
-        await context.sync();
       }
 
-      // Add blank line at end
-      lastRange.insertParagraph('', Word.InsertLocation.after);
+      // Insert heading last (becomes first after reversals)
+      const heading = selection.insertParagraph(productName, Word.InsertLocation.before);
+      heading.styleBuiltIn = Word.BuiltInStyleName.heading2;
+
       await context.sync();
     });
   }
