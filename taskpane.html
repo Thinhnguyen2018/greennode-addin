@@ -22,6 +22,18 @@
       --text-muted: #777;
     }
 
+    .api-info {
+      background: #f0fbf7;
+      border: 1px solid #9FE1CB;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #085041;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .api-info strong { font-weight: 600; }
+
     body {
       font-family: 'Segoe UI', -apple-system, sans-serif;
       font-size: 13px;
@@ -291,12 +303,18 @@
   </div>
 
   <!-- API Key -->
-  <label class="label">Anthropic API Key</label>
+  <label class="label">VNG Cloud API Key</label>
   <div class="api-row">
-    <input type="password" id="api-key" placeholder="sk-ant-api03-..."/>
+    <input type="password" id="api-key" placeholder="Nhập VNG Cloud API key..."/>
     <button class="eye-btn" onclick="toggleKey()" title="Hiện/ẩn key">👁</button>
   </div>
-  <p class="api-hint">Lấy key tại <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> · Lưu tự động</p>
+  <p class="api-hint">API key nội bộ công ty · Lưu tự động trong máy</p>
+
+  <!-- Model info (hardcoded) -->
+  <input type="hidden" id="model-select" value="openapi-oss-20b"/>
+  <div class="api-info" style="margin-top:6px;">
+    <strong>Endpoint:</strong> maas-llm-aiplatform-hcm.api.vngcloud.vn &nbsp;·&nbsp; <strong>Model:</strong> openapi-oss-20b
+  </div>
 
   <hr/>
 
@@ -382,46 +400,48 @@
 
   /* ── Fetch product info via Claude API ── */
   async function fetchProductInfo(productName, url, apiKey) {
-    const prompt = lang === 'vi'
-      ? `Tìm kiếm thông tin mới nhất về sản phẩm "${productName}" của GreenNode VNG Cloud tại: ${url}
+    const model = document.getElementById('model-select').value;
 
-Viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ, bao gồm:
+    const systemPrompt = lang === 'vi'
+      ? 'Bạn là trợ lý viết hợp đồng chuyên nghiệp. Hãy viết mô tả sản phẩm rõ ràng, súc tích, phù hợp để đưa vào hợp đồng dịch vụ.'
+      : 'You are a professional contract writing assistant. Write clear, concise product descriptions suitable for service contracts.';
+
+    const userPrompt = lang === 'vi'
+      ? `Dựa trên thông tin về sản phẩm "${productName}" của GreenNode VNG Cloud (tham khảo từ ${url}), hãy viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ, bao gồm:
 1. Tên sản phẩm và mô tả tổng quan (2-3 câu)
 2. Tính năng chính (3-5 điểm, dùng dấu gạch đầu dòng "-")
 3. Cam kết dịch vụ / SLA nổi bật nếu có
 
-Viết bằng tiếng Việt, giọng văn chuyên nghiệp, phù hợp hợp đồng.`
-      : `Search for the latest information about "${productName}" by GreenNode VNG Cloud at: ${url}
-
-Write a product description suitable for a service contract, including:
+Viết bằng tiếng Việt, giọng văn chuyên nghiệp.`
+      : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract including:
 1. Product name and overview (2-3 sentences)
 2. Key features (3-5 bullet points using "-")
 3. Notable SLA commitments if available
 
-Write in professional English suitable for a contract.`;
+Write in professional English.`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: model,
         max_tokens: 1000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
       })
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
+      throw new Error(err.error?.message || `HTTP ${res.status} - Kiểm tra lại API key`);
     }
     const data = await res.json();
-    return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    return data.choices?.[0]?.message?.content?.trim() || 'Không có phản hồi từ model.';
   }
 
   /* ── Insert into Word ── */
@@ -481,8 +501,8 @@ Write in professional English suitable for a contract.`;
       return;
     }
     const apiKey = document.getElementById('api-key').value.trim();
-    if (!apiKey || !apiKey.startsWith('sk-')) {
-      setStatus('Vui lòng nhập Anthropic API Key hợp lệ (bắt đầu bằng sk-).', 'error');
+    if (!apiKey || apiKey.length < 10) {
+      setStatus('Vui lòng nhập VNG Cloud MaaS API Key.', 'error');
       return;
     }
 
