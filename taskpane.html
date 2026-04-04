@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GreenNode Product Agent</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --green-light: #E1F5EE;
+      --green-border: #9FE1CB;
+      --red-light: #fff5f5;
+      --red-border: #F09595;
+      --red-text: #A32D2D;
+      --border: #e0e0e0;
+      --bg-secondary: #f7f7f7;
+      --text: #1a1a1a;
+      --text-muted: #777;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      background: #fff;
+      padding: 14px 16px 24px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .header-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .header-title { font-size: 14px; font-weight: 600; }
+    .header-sub { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+    /* ── Labels ── */
+    .label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 5px;
+    }
+
+    /* ── Select ── */
+    select {
+      width: 100%;
+      padding: 8px 30px 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text);
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23888' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") no-repeat right 10px center;
+      appearance: none;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    select:focus { outline: none; border-color: var(--green); }
+
+    /* ── Custom product row ── */
+    .toggle-link {
+      font-size: 11px;
+      color: var(--green);
+      cursor: pointer;
+      text-decoration: underline;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .custom-form {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .custom-form.open { display: flex; }
+    .custom-form input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .custom-form input:focus { outline: none; border-color: var(--green); }
+    .custom-form-actions { display: flex; gap: 6px; }
+    .btn-sm {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      background: #fff;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .btn-sm:hover { background: var(--bg-secondary); }
+    .btn-sm.primary { background: var(--green); color: #fff; border-color: var(--green); }
+    .btn-sm.primary:hover { background: var(--green-dark); }
+
+    /* ── Divider ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* ── API Key ── */
+    .api-row { position: relative; margin-bottom: 12px; }
+    .api-row input {
+      width: 100%;
+      padding: 8px 36px 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: monospace;
+      color: var(--text);
+    }
+    .api-row input:focus { outline: none; border-color: var(--green); }
+    .eye-btn {
+      position: absolute;
+      right: 8px; top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 2px;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .api-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .api-hint a { color: var(--green); text-decoration: none; }
+
+    /* ── Language toggle ── */
+    .lang-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .lang-row span { font-size: 11px; color: var(--text-muted); margin-right: 2px; }
+    .lang-btn {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .lang-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+    /* ── Insert button ── */
+    .insert-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      transition: background 0.15s;
+    }
+    .insert-btn:hover:not(:disabled) { background: var(--green-dark); }
+    .insert-btn:disabled { background: #a0c8bc; cursor: not-allowed; }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status box ── */
+    .status-box {
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      min-height: 46px;
+    }
+    .status-box.loading { background: var(--green-light); border-color: var(--green-border); color: #085041; }
+    .status-box.success { background: var(--green-light); border-color: var(--green); color: #085041; }
+    .status-box.error   { background: var(--red-light); border-color: var(--red-border); color: var(--red-text); }
+
+    .step { display: flex; gap: 8px; align-items: flex-start; padding: 2px 0; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; background: #ccc; }
+    .dot.active { background: var(--green); animation: pulse 1s infinite; }
+    .dot.done   { background: var(--green); }
+    .dot.err    { background: #E24B4A; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── History ── */
+    .section-head {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 9px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: #fff;
+      margin-bottom: 4px;
+    }
+    .history-name { font-size: 12px; color: var(--text); }
+    .history-time { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+    .reinsert-btn {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      white-space: nowrap;
+    }
+    .reinsert-btn:hover { color: var(--green-dark); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-dot"></div>
+    <span class="header-title">GreenNode Agent</span>
+    <span class="header-sub">VNG Cloud docs</span>
+  </div>
+
+  <!-- Product selector -->
+  <label class="label" for="product-select">Sản phẩm</label>
+  <select id="product-select">
+    <option value="">-- Chọn sản phẩm --</option>
+    <option value="vServer|https://docs.vngcloud.vn/vng-cloud-document/vserver">vServer – Máy chủ ảo</option>
+    <option value="vStorage|https://docs.vngcloud.vn/vng-cloud-document/vstorage">vStorage – Lưu trữ đám mây</option>
+    <option value="VKS|https://docs.vngcloud.vn/vng-cloud-document/vks">VKS – Kubernetes Service</option>
+    <option value="vLB|https://docs.vngcloud.vn/vng-cloud-document/vlb-load-balancer-new-version">vLB – Load Balancer</option>
+    <option value="vDB|https://docs.vngcloud.vn/vng-cloud-document/vdb">vDB – Database Service</option>
+    <option value="vCDN|https://docs.vngcloud.vn/vng-cloud-document/vcdn">vCDN – Content Delivery Network</option>
+    <option value="WAF|https://docs.vngcloud.vn/vng-cloud-document/vwaf">WAF – Web Application Firewall</option>
+    <option value="vMonitor|https://docs.vngcloud.vn/vng-cloud-document/vmonitor-platform">vMonitor – Giám sát hệ thống</option>
+    <option value="Backup Center|https://docs.vngcloud.vn/vng-cloud-document/backup-center">Backup Center – Sao lưu & DR</option>
+    <option value="vDCI|https://docs.vngcloud.vn/vng-cloud-document/vdci">vDCI – Bare Metal Server</option>
+    <option value="vMarketPlace|https://docs.vngcloud.vn/vng-cloud-document/vmarketplace">vMarketPlace</option>
+    <option value="IAM|https://docs.vngcloud.vn/vng-cloud-document/identity-and-access-management-iam">IAM – Quản lý truy cập</option>
+  </select>
+
+  <span class="toggle-link" onclick="toggleCustom()">+ Thêm sản phẩm tùy chỉnh</span>
+  <div class="custom-form" id="custom-form">
+    <input id="custom-name" placeholder="Tên sản phẩm (vd: vFirewall)"/>
+    <input id="custom-url" placeholder="URL trang docs"/>
+    <div class="custom-form-actions">
+      <button class="btn-sm" onclick="toggleCustom()">Hủy</button>
+      <button class="btn-sm primary" onclick="addCustom()">Thêm</button>
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- Language -->
+  <div class="lang-row">
+    <span>Ngôn ngữ output:</span>
+    <button class="lang-btn active" id="lang-vi" onclick="setLang('vi')">Tiếng Việt</button>
+    <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
+  </div>
+
+  <!-- API Key -->
+  <label class="label">Anthropic API Key</label>
+  <div class="api-row">
+    <input type="password" id="api-key" placeholder="sk-ant-api03-..."/>
+    <button class="eye-btn" onclick="toggleKey()" title="Hiện/ẩn key">👁</button>
+  </div>
+  <p class="api-hint">Lấy key tại <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> · Lưu tự động</p>
+
+  <hr/>
+
+  <!-- Insert button -->
+  <button class="insert-btn" id="insert-btn" onclick="insertProduct()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btn-label">Chèn vào hợp đồng</span>
+  </button>
+
+  <div class="status-box" id="status-box">Chọn sản phẩm và nhấn "Chèn vào hợp đồng".</div>
+
+  <!-- History -->
+  <div id="history-wrap" style="display:none;">
+    <hr/>
+    <div class="section-head">Đã chèn trong phiên này</div>
+    <div id="history-list"></div>
+  </div>
+
+<script>
+  /* ── State ── */
+  let lang = 'vi';
+  const history = [];
+
+  /* ── Office init ── */
+  Office.onReady(() => {
+    const saved = localStorage.getItem('gn_api_key');
+    if (saved) document.getElementById('api-key').value = saved;
+    const savedLang = localStorage.getItem('gn_lang');
+    if (savedLang) setLang(savedLang);
+  });
+
+  /* ── Lang toggle ── */
+  function setLang(l) {
+    lang = l;
+    localStorage.setItem('gn_lang', l);
+    document.getElementById('lang-vi').className = 'lang-btn' + (l === 'vi' ? ' active' : '');
+    document.getElementById('lang-en').className = 'lang-btn' + (l === 'en' ? ' active' : '');
+    document.getElementById('btn-label').textContent = l === 'vi' ? 'Chèn vào hợp đồng' : 'Insert into contract';
+  }
+
+  /* ── Key toggle ── */
+  function toggleKey() {
+    const inp = document.getElementById('api-key');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  /* ── Custom product ── */
+  function toggleCustom() {
+    const f = document.getElementById('custom-form');
+    f.classList.toggle('open');
+  }
+  function addCustom() {
+    const name = document.getElementById('custom-name').value.trim();
+    const url  = document.getElementById('custom-url').value.trim();
+    if (!name || !url) return;
+    const sel = document.getElementById('product-select');
+    const opt = document.createElement('option');
+    opt.value = `${name}|${url}`;
+    opt.text  = `${name} (tùy chỉnh)`;
+    sel.appendChild(opt);
+    sel.value = opt.value;
+    document.getElementById('custom-name').value = '';
+    document.getElementById('custom-url').value = '';
+    toggleCustom();
+  }
+
+  /* ── Status helpers ── */
+  function setStatus(content, type) {
+    const box = document.getElementById('status-box');
+    box.className = 'status-box ' + (type || '');
+    if (typeof content === 'string') { box.textContent = content; return; }
+    box.innerHTML = content.map(s =>
+      `<div class="step"><div class="dot ${s.state}"></div><span>${s.text}</span></div>`
+    ).join('');
+  }
+  function setLoading(on) {
+    document.getElementById('insert-btn').disabled = on;
+    document.getElementById('spinner').style.display = on ? 'block' : 'none';
+    document.getElementById('btn-label').textContent = on
+      ? (lang === 'vi' ? 'Đang xử lý...' : 'Processing...')
+      : (lang === 'vi' ? 'Chèn vào hợp đồng' : 'Insert into contract');
+  }
+
+  /* ── Fetch product info via Claude API ── */
+  async function fetchProductInfo(productName, url, apiKey) {
+    const prompt = lang === 'vi'
+      ? `Tìm kiếm thông tin mới nhất về sản phẩm "${productName}" của GreenNode VNG Cloud tại: ${url}
+
+Viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ, bao gồm:
+1. Tên sản phẩm và mô tả tổng quan (2-3 câu)
+2. Tính năng chính (3-5 điểm, dùng dấu gạch đầu dòng "-")
+3. Cam kết dịch vụ / SLA nổi bật nếu có
+
+Viết bằng tiếng Việt, giọng văn chuyên nghiệp, phù hợp hợp đồng.`
+      : `Search for the latest information about "${productName}" by GreenNode VNG Cloud at: ${url}
+
+Write a product description suitable for a service contract, including:
+1. Product name and overview (2-3 sentences)
+2. Key features (3-5 bullet points using "-")
+3. Notable SLA commitments if available
+
+Write in professional English suitable for a contract.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  }
+
+  /* ── Insert into Word ── */
+  async function insertIntoWord(productName, content) {
+    return Word.run(async (context) => {
+      const doc = context.document;
+      const selection = doc.getSelection();
+
+      // Build paragraphs to insert (reverse order since we insert "before")
+      const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // Insert from bottom to top to preserve order
+      // First insert a blank line after
+      const blank = selection.insertParagraph('', Word.InsertLocation.before);
+
+      // Insert content lines in reverse
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        const isBullet = /^[-•*]\s+/.test(line);
+        const text = isBullet ? line.replace(/^[-•*]\s+/, '') : line;
+
+        const para = selection.insertParagraph(text, Word.InsertLocation.before);
+
+        if (isBullet) {
+          para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
+        }
+      }
+
+      // Insert heading last (becomes first after reversals)
+      const heading = selection.insertParagraph(productName, Word.InsertLocation.before);
+      heading.styleBuiltIn = Word.BuiltInStyleName.heading2;
+
+      await context.sync();
+    });
+  }
+
+  /* ── Main action ── */
+  async function insertProduct(overrideName, overrideContent) {
+    // Re-insert from history
+    if (overrideName && overrideContent) {
+      try {
+        setStatus(
+          [{ text: `Đang chèn lại ${overrideName}...`, state: 'active' }],
+          'loading'
+        );
+        await insertIntoWord(overrideName, overrideContent);
+        setStatus([{ text: `✓ Đã chèn lại ${overrideName}`, state: 'done' }], 'success');
+      } catch (e) {
+        setStatus([{ text: 'Lỗi: ' + e.message, state: 'err' }], 'error');
+      }
+      return;
+    }
+
+    const sel = document.getElementById('product-select').value;
+    if (!sel) {
+      setStatus('Vui lòng chọn một sản phẩm.', 'error');
+      return;
+    }
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+      setStatus('Vui lòng nhập Anthropic API Key hợp lệ (bắt đầu bằng sk-).', 'error');
+      return;
+    }
+
+    localStorage.setItem('gn_api_key', apiKey);
+    const [productName, productUrl] = sel.split('|');
+
+    setLoading(true);
+    const steps = [
+      { text: `Đang tìm thông tin mới nhất về ${productName}...`, state: 'active' },
+      { text: 'Đang chèn vào hợp đồng...', state: '' },
+    ];
+    setStatus(steps, 'loading');
+
+    try {
+      const content = await fetchProductInfo(productName, productUrl, apiKey);
+
+      steps[0].state = 'done';
+      steps[1].state = 'active';
+      setStatus(steps, 'loading');
+
+      await insertIntoWord(productName, content);
+
+      steps[1].state = 'done';
+      setStatus(steps, 'success');
+
+      // Save to history
+      const now = new Date();
+      const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+      history.unshift({ name: productName, content, time: timeStr });
+      renderHistory();
+
+    } catch (e) {
+      setStatus([{ text: 'Lỗi: ' + e.message, state: 'err' }], 'error');
+    }
+
+    setLoading(false);
+  }
+
+  /* ── History ── */
+  function renderHistory() {
+    if (history.length === 0) return;
+    document.getElementById('history-wrap').style.display = 'block';
+    document.getElementById('history-list').innerHTML = history.slice(0, 6).map((h, i) => `
+      <div class="history-item">
+        <div>
+          <div class="history-name">${h.name}</div>
+          <div class="history-time">${h.time}</div>
+        </div>
+        <button class="reinsert-btn" onclick="insertProduct('${h.name.replace(/'/g,"\\'")}', historyContent(${i}))">Chèn lại</button>
+      </div>
+    `).join('');
+  }
+
+  function historyContent(i) {
+    return history[i]?.content || '';
+  }
+</script>
+</body>
+</html>
