@@ -42,7 +42,6 @@
       padding: 14px 16px 24px;
     }
 
-    /* ── Header ── */
     .header {
       display: flex;
       align-items: center;
@@ -55,7 +54,6 @@
     .header-title { font-size: 14px; font-weight: 600; }
     .header-sub { margin-left: auto; font-size: 11px; color: var(--text-muted); }
 
-    /* ── Labels ── */
     .label {
       display: block;
       font-size: 11px;
@@ -66,7 +64,6 @@
       margin-bottom: 5px;
     }
 
-    /* ── Select ── */
     select {
       width: 100%;
       padding: 8px 30px 8px 10px;
@@ -81,7 +78,6 @@
     }
     select:focus { outline: none; border-color: var(--green); }
 
-    /* ── Custom product row ── */
     .toggle-link {
       font-size: 11px;
       color: var(--green);
@@ -121,10 +117,8 @@
     .btn-sm.primary { background: var(--green); color: #fff; border-color: var(--green); }
     .btn-sm.primary:hover { background: var(--green-dark); }
 
-    /* ── Divider ── */
     hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
-    /* ── API Key ── */
     .api-row { position: relative; margin-bottom: 12px; }
     .api-row input {
       width: 100%;
@@ -149,9 +143,7 @@
       line-height: 1;
     }
     .api-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-    .api-hint a { color: var(--green); text-decoration: none; }
 
-    /* ── Language toggle ── */
     .lang-row {
       display: flex;
       gap: 6px;
@@ -170,7 +162,6 @@
     }
     .lang-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
 
-    /* ── Insert button ── */
     .insert-btn {
       width: 100%;
       padding: 10px;
@@ -201,7 +192,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Status box ── */
     .status-box {
       border-radius: 6px;
       padding: 10px 12px;
@@ -223,7 +213,6 @@
     .dot.err    { background: #E24B4A; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    /* ── History ── */
     .section-head {
       font-size: 11px;
       font-weight: 600;
@@ -265,7 +254,6 @@
     <span class="header-sub">VNG Cloud docs</span>
   </div>
 
-  <!-- Product selector -->
   <label class="label" for="product-select">Sản phẩm</label>
   <select id="product-select">
     <option value="">-- Chọn sản phẩm --</option>
@@ -295,14 +283,12 @@
 
   <hr/>
 
-  <!-- Language -->
   <div class="lang-row">
     <span>Ngôn ngữ output:</span>
     <button class="lang-btn active" id="lang-vi" onclick="setLang('vi')">Tiếng Việt</button>
     <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
   </div>
 
-  <!-- API Key -->
   <label class="label">VNG Cloud API Key</label>
   <div class="api-row">
     <input type="password" id="api-key" placeholder="Nhập VNG Cloud API key..."/>
@@ -310,15 +296,13 @@
   </div>
   <p class="api-hint">API key nội bộ công ty · Lưu tự động trong máy</p>
 
-  <!-- Model info (hardcoded) -->
   <input type="hidden" id="model-select" value="openai/gpt-oss-20b"/>
   <div class="api-info" style="margin-top:6px;">
-    <strong>Endpoint:</strong> maas-llm-aiplatform-hcm.api.vngcloud.vn &nbsp;·&nbsp; <strong>Model:</strong> openai/gpt-oss-20b
+    <strong>Endpoint:</strong> wordgen.thinhthomas2000.workers.dev &nbsp;·&nbsp; <strong>Model:</strong> openai/gpt-oss-20b
   </div>
 
   <hr/>
 
-  <!-- Insert button -->
   <button class="insert-btn" id="insert-btn" onclick="insertProduct()">
     <div class="spinner" id="spinner"></div>
     <span id="btn-label">Chèn vào hợp đồng</span>
@@ -326,7 +310,6 @@
 
   <div class="status-box" id="status-box">Chọn sản phẩm và nhấn "Chèn vào hợp đồng".</div>
 
-  <!-- History -->
   <div id="history-wrap" style="display:none;">
     <hr/>
     <div class="section-head">Đã chèn trong phiên này</div>
@@ -334,11 +317,9 @@
   </div>
 
 <script>
-  /* ── State ── */
   let lang = 'vi';
   const history = [];
 
-  /* ── Office init ── */
   Office.onReady(() => {
     const saved = localStorage.getItem('gn_api_key');
     if (saved) document.getElementById('api-key').value = saved;
@@ -346,7 +327,6 @@
     if (savedLang) setLang(savedLang);
   });
 
-  /* ── Lang toggle ── */
   function setLang(l) {
     lang = l;
     localStorage.setItem('gn_lang', l);
@@ -355,17 +335,15 @@
     document.getElementById('btn-label').textContent = l === 'vi' ? 'Chèn vào hợp đồng' : 'Insert into contract';
   }
 
-  /* ── Key toggle ── */
   function toggleKey() {
     const inp = document.getElementById('api-key');
     inp.type = inp.type === 'password' ? 'text' : 'password';
   }
 
-  /* ── Custom product ── */
   function toggleCustom() {
-    const f = document.getElementById('custom-form');
-    f.classList.toggle('open');
+    document.getElementById('custom-form').classList.toggle('open');
   }
+
   function addCustom() {
     const name = document.getElementById('custom-name').value.trim();
     const url  = document.getElementById('custom-url').value.trim();
@@ -381,7 +359,6 @@
     toggleCustom();
   }
 
-  /* ── Status helpers ── */
   function setStatus(content, type) {
     const box = document.getElementById('status-box');
     box.className = 'status-box ' + (type || '');
@@ -390,6 +367,7 @@
       `<div class="step"><div class="dot ${s.state}"></div><span>${s.text}</span></div>`
     ).join('');
   }
+
   function setLoading(on) {
     document.getElementById('insert-btn').disabled = on;
     document.getElementById('spinner').style.display = on ? 'block' : 'none';
@@ -398,7 +376,6 @@
       : (lang === 'vi' ? 'Chèn vào hợp đồng' : 'Insert into contract');
   }
 
-  /* ── Fetch product info via Claude API ── */
   async function fetchProductInfo(productName, url, apiKey) {
     const model = document.getElementById('model-select').value;
 
@@ -407,13 +384,18 @@
       : 'You are a professional contract writing assistant. Write clear, concise product descriptions suitable for service contracts.';
 
     const userPrompt = lang === 'vi'
-      ? `Dựa trên thông tin về sản phẩm "${productName}" của GreenNode VNG Cloud (tham khảo từ ${url}), hãy viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ, bao gồm:
+      ? `Dựa trên thông tin về sản phẩm "${productName}" của GreenNode VNG Cloud (tham khảo từ ${url}), hãy viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ.
+
+QUAN TRỌNG: Viết theo đúng thứ tự từ trên xuống dưới như sau, KHÔNG đảo ngược:
+
 1. Tên sản phẩm và mô tả tổng quan (2-3 câu)
 2. Tính năng chính (3-5 điểm, dùng dấu gạch đầu dòng "-")
 3. Cam kết dịch vụ / SLA nổi bật nếu có
 
-Viết bằng tiếng Việt, giọng văn chuyên nghiệp.`
-      : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract including:
+Bắt đầu bằng tên sản phẩm, sau đó mô tả tổng quan, rồi mới đến tính năng và SLA. Viết bằng tiếng Việt, giọng văn chuyên nghiệp.`
+      : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract.
+
+IMPORTANT: Write in this exact order from top to bottom, do NOT reverse:
 1. Product name and overview (2-3 sentences)
 2. Key features (3-5 bullet points using "-")
 3. Notable SLA commitments if available
@@ -441,52 +423,68 @@ Write in professional English.`;
       throw new Error(err.error?.message || `HTTP ${res.status} - Kiểm tra lại API key`);
     }
     const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || 'Không có phản hồi từ model.';
+    let text = data.choices?.[0]?.message?.content?.trim() || 'Không có phản hồi từ model.';
+
+    // Fix reversed output: parse sections by number and sort 1→2→3
+    const lines = text.split('\n');
+    const sections = { 1: [], 2: [], 3: [] };
+    let currentSection = 0;
+
+    for (const line of lines) {
+      const match = line.match(/^\*{0,2}([123])\.\s/);
+      if (match) {
+        currentSection = parseInt(match[1]);
+      }
+      if (currentSection > 0) {
+        sections[currentSection].push(line);
+      }
+    }
+
+    // If sections were detected, reassemble in correct order
+    const s1 = sections[1].join('\n').trim();
+    const s2 = sections[2].join('\n').trim();
+    const s3 = sections[3].join('\n').trim();
+    if (s1 && s2) {
+      text = [s1, s2, s3].filter(Boolean).join('\n\n');
+    }
+
+    return text;
   }
 
-  /* ── Insert into Word ── */
+  /* ── Insert into Word (đúng thứ tự từ trên xuống) ── */
   async function insertIntoWord(productName, content) {
     return Word.run(async (context) => {
-      const doc = context.document;
-      const selection = doc.getSelection();
-
-      // Build paragraphs to insert (reverse order since we insert "before")
+      const selection = context.document.getSelection();
       const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
 
-      // Insert from bottom to top to preserve order
-      // First insert a blank line after
-      const blank = selection.insertParagraph('', Word.InsertLocation.before);
+      // Chèn heading trước tiên
+      const heading = selection.insertParagraph(productName, Word.InsertLocation.before);
+      heading.styleBuiltIn = Word.BuiltInStyleName.heading2;
+      await context.sync();
 
-      // Insert content lines in reverse
-      for (let i = lines.length - 1; i >= 0; i--) {
-        const line = lines[i];
+      // Chèn từng dòng AFTER dòng trước → đúng thứ tự trên xuống dưới
+      let lastPara = heading;
+      for (const line of lines) {
         const isBullet = /^[-•*]\s+/.test(line);
         const text = isBullet ? line.replace(/^[-•*]\s+/, '') : line;
-
-        const para = selection.insertParagraph(text, Word.InsertLocation.before);
-
+        const para = lastPara.insertParagraph(text, Word.InsertLocation.after);
         if (isBullet) {
           para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
         }
+        lastPara = para;
+        await context.sync();
       }
 
-      // Insert heading last (becomes first after reversals)
-      const heading = selection.insertParagraph(productName, Word.InsertLocation.before);
-      heading.styleBuiltIn = Word.BuiltInStyleName.heading2;
-
+      // Dòng trống cuối để cách với nội dung tiếp theo
+      lastPara.insertParagraph('', Word.InsertLocation.after);
       await context.sync();
     });
   }
 
-  /* ── Main action ── */
   async function insertProduct(overrideName, overrideContent) {
-    // Re-insert from history
     if (overrideName && overrideContent) {
       try {
-        setStatus(
-          [{ text: `Đang chèn lại ${overrideName}...`, state: 'active' }],
-          'loading'
-        );
+        setStatus([{ text: `Đang chèn lại ${overrideName}...`, state: 'active' }], 'loading');
         await insertIntoWord(overrideName, overrideContent);
         setStatus([{ text: `✓ Đã chèn lại ${overrideName}`, state: 'done' }], 'success');
       } catch (e) {
@@ -496,15 +494,10 @@ Write in professional English.`;
     }
 
     const sel = document.getElementById('product-select').value;
-    if (!sel) {
-      setStatus('Vui lòng chọn một sản phẩm.', 'error');
-      return;
-    }
+    if (!sel) { setStatus('Vui lòng chọn một sản phẩm.', 'error'); return; }
+
     const apiKey = document.getElementById('api-key').value.trim();
-    if (!apiKey || apiKey.length < 10) {
-      setStatus('Vui lòng nhập VNG Cloud MaaS API Key.', 'error');
-      return;
-    }
+    if (!apiKey || apiKey.length < 10) { setStatus('Vui lòng nhập VNG Cloud API Key.', 'error'); return; }
 
     localStorage.setItem('gn_api_key', apiKey);
     const [productName, productUrl] = sel.split('|');
@@ -528,7 +521,6 @@ Write in professional English.`;
       steps[1].state = 'done';
       setStatus(steps, 'success');
 
-      // Save to history
       const now = new Date();
       const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
       history.unshift({ name: productName, content, time: timeStr });
@@ -541,7 +533,6 @@ Write in professional English.`;
     setLoading(false);
   }
 
-  /* ── History ── */
   function renderHistory() {
     if (history.length === 0) return;
     document.getElementById('history-wrap').style.display = 'block';
