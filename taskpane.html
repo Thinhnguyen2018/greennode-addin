@@ -451,80 +451,96 @@ Write in professional English.`;
     return text;
   }
 
-  /* ── Insert into Word (đúng thứ tự, format chuẩn) ── */
+  /* ── Insert into Word – format chuẩn theo hợp đồng ── */
   async function insertIntoWord(productName, content) {
     return Word.run(async (context) => {
       const selection = context.document.getSelection();
-      const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+      const lines = content.split('\n').map(l => l.trim()).filter(l => {
+        // Bỏ dòng chỉ là tên sản phẩm ngắn (dòng đầu tiên đơn giản)
+        if (l === productName) return false;
+        // Bỏ dòng "---" và đoạn chú thích cuối
+        if (/^[-─]{3,}$/.test(l)) return false;
+        if (/^Đoạn mô tả trên/.test(l)) return false;
+        return true;
+      });
 
       let lastPara = null;
-      let isFirstLine = true;
+
+      const insert = (text, loc) => {
+        const target = lastPara || selection;
+        return target.insertParagraph(text, loc || (lastPara ? Word.InsertLocation.after : Word.InsertLocation.before));
+      };
 
       for (const line of lines) {
-        // Bỏ dòng đầu tiên nếu chỉ là tên sản phẩm đơn giản (không có mô tả)
-        if (isFirstLine) {
-          isFirstLine = false;
-          // Bỏ qua nếu dòng đầu ngắn và không có dấu – hoặc mô tả dài
-          if (line.length < 60 && !line.includes('–') && !line.includes('-') && !/[a-zàáâãèéêìíòóôõùúýăđ]/i.test(line.replace(productName, ''))) {
-            continue;
-          }
-        }
+        // ── Heading 2 bold: dòng tên sản phẩm đầy đủ có dấu "–" ──
+        const isMainTitle = line.includes('–') && line.includes('GreenNode');
 
-        // Detect heading chứa tên sản phẩm đầy đủ (dòng overview)
-        const isOverviewHeading = line.includes(productName) && line.includes('–') && line.includes('GreenNode');
+        // ── Heading 3: "Tính năng chính" hoặc "Cam kết dịch vụ / SLA" ──
+        const isHeading3 = /^(Tính năng chính|Cam kết dịch vụ|SLA)/i.test(line) ||
+                           /^\*{0,2}(Tính năng chính|Cam kết dịch vụ|SLA)/i.test(line);
 
-        // Detect bullet
-        const isBullet = /^[-•*]\s+/.test(line) || /^\*\*[^*]+\*\*:/.test(line);
+        // ── Bullet list: bắt đầu bằng "- " hoặc "• " ──
+        const isBullet = /^[-•]\s+/.test(line);
 
-        // Strip **bold** markers để xử lý riêng
-        const hasBold = /\*\*/.test(line);
+        // ── Dòng có bold trước dấu ":" (tính năng / SLA item) ──
+        // Format: "**Tên tính năng**: mô tả" hoặc "Tên tính năng: mô tả"
+        const boldColonMatch = line.match(/^(\*{0,2})([^:*]{3,40}?)(\*{0,2}):\s*(.+)$/);
 
-        // Tạo paragraph
-        const insertLoc = lastPara ? Word.InsertLocation.after : Word.InsertLocation.before;
-        const target = lastPara || selection;
-
-        if (isOverviewHeading) {
-          // Heading 3 cho dòng tên sản phẩm đầy đủ
+        if (isMainTitle) {
           const cleanText = line.replace(/\*\*/g, '');
-          const para = target.insertParagraph(cleanText, insertLoc);
+          const para = insert(cleanText);
+          para.styleBuiltIn = Word.BuiltInStyleName.heading2;
+          // Bold toàn bộ
+          para.font.bold = true;
+          lastPara = para;
+
+        } else if (isHeading3) {
+          const cleanText = line.replace(/\*\*/g, '');
+          const para = insert(cleanText);
           para.styleBuiltIn = Word.BuiltInStyleName.heading3;
           lastPara = para;
-        } else if (isBullet && hasBold) {
-          // Bullet với bold ở đầu: "**Tên tính năng**: mô tả"
-          const para = target.insertParagraph('', insertLoc);
+
+        } else if (isBullet && boldColonMatch) {
+          // Bullet với bold trước ":"
+          const boldPart = boldColonMatch[2].trim();
+          const normalPart = boldColonMatch[4].trim();
+          const para = insert('');
           para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
+          para.insertText(boldPart + ': ', Word.InsertLocation.start).bold = true;
+          para.insertText(normalPart, Word.InsertLocation.end);
+          lastPara = para;
 
-          // Parse: tách phần bold và phần thường
-          const parts = line.replace(/^[-•*]\s*/, '').split(/(\*\*[^*]+\*\*)/g);
+        } else if (boldColonMatch && boldColonMatch[2].length < 40) {
+          // List item (không có bullet ký tự) với bold trước ":"
+          const boldPart = boldColonMatch[2].trim();
+          const normalPart = boldColonMatch[4].trim();
+          const para = insert('');
+          para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
+          para.insertText(boldPart + ': ', Word.InsertLocation.start).bold = true;
+          para.insertText(normalPart, Word.InsertLocation.end);
+          lastPara = para;
+
+        } else if (line.includes('**')) {
+          // Dòng thường có **bold** inline
+          const para = insert('');
+          const parts = line.replace(/^[-•]\s*/, '').split(/(\*\*[^*]+\*\*)/g);
+          let isFirst = true;
           for (const part of parts) {
             if (!part) continue;
             if (part.startsWith('**') && part.endsWith('**')) {
-              const run = para.insertText(part.replace(/\*\*/g, ''), Word.InsertLocation.end);
+              const run = para.insertText(part.replace(/\*\*/g, ''), isFirst ? Word.InsertLocation.start : Word.InsertLocation.end);
               run.bold = true;
             } else {
-              para.insertText(part, Word.InsertLocation.end);
+              para.insertText(part, isFirst ? Word.InsertLocation.start : Word.InsertLocation.end);
             }
+            isFirst = false;
           }
           lastPara = para;
-        } else if (hasBold) {
-          // Paragraph thường có chứa **bold**
-          const para = target.insertParagraph('', insertLoc);
 
-          const parts = line.split(/(\*\*[^*]+\*\*)/g);
-          for (const part of parts) {
-            if (!part) continue;
-            if (part.startsWith('**') && part.endsWith('**')) {
-              const run = para.insertText(part.replace(/\*\*/g, ''), Word.InsertLocation.end);
-              run.bold = true;
-            } else {
-              para.insertText(part, Word.InsertLocation.end);
-            }
-          }
-          lastPara = para;
         } else {
-          // Paragraph thường
-          const cleanText = line.replace(/\*\*/g, '');
-          const para = target.insertParagraph(cleanText, insertLoc);
+          // Paragraph thường – text đen
+          const cleanText = line.replace(/\*\*/g, '').replace(/^[-•]\s*/, '');
+          const para = insert(cleanText);
           lastPara = para;
         }
 
