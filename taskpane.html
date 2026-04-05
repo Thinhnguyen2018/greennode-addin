@@ -451,33 +451,91 @@ Write in professional English.`;
     return text;
   }
 
-  /* ── Insert into Word (đúng thứ tự từ trên xuống) ── */
+  /* ── Insert into Word (đúng thứ tự, format chuẩn) ── */
   async function insertIntoWord(productName, content) {
     return Word.run(async (context) => {
       const selection = context.document.getSelection();
       const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
 
-      // Chèn heading trước tiên
-      const heading = selection.insertParagraph(productName, Word.InsertLocation.before);
-      heading.styleBuiltIn = Word.BuiltInStyleName.heading2;
-      await context.sync();
+      let lastPara = null;
+      let isFirstLine = true;
 
-      // Chèn từng dòng AFTER dòng trước → đúng thứ tự trên xuống dưới
-      let lastPara = heading;
       for (const line of lines) {
-        const isBullet = /^[-•*]\s+/.test(line);
-        const text = isBullet ? line.replace(/^[-•*]\s+/, '') : line;
-        const para = lastPara.insertParagraph(text, Word.InsertLocation.after);
-        if (isBullet) {
-          para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
+        // Bỏ dòng đầu tiên nếu chỉ là tên sản phẩm đơn giản (không có mô tả)
+        if (isFirstLine) {
+          isFirstLine = false;
+          // Bỏ qua nếu dòng đầu ngắn và không có dấu – hoặc mô tả dài
+          if (line.length < 60 && !line.includes('–') && !line.includes('-') && !/[a-zàáâãèéêìíòóôõùúýăđ]/i.test(line.replace(productName, ''))) {
+            continue;
+          }
         }
-        lastPara = para;
+
+        // Detect heading chứa tên sản phẩm đầy đủ (dòng overview)
+        const isOverviewHeading = line.includes(productName) && line.includes('–') && line.includes('GreenNode');
+
+        // Detect bullet
+        const isBullet = /^[-•*]\s+/.test(line) || /^\*\*[^*]+\*\*:/.test(line);
+
+        // Strip **bold** markers để xử lý riêng
+        const hasBold = /\*\*/.test(line);
+
+        // Tạo paragraph
+        const insertLoc = lastPara ? Word.InsertLocation.after : Word.InsertLocation.before;
+        const target = lastPara || selection;
+
+        if (isOverviewHeading) {
+          // Heading 3 cho dòng tên sản phẩm đầy đủ
+          const cleanText = line.replace(/\*\*/g, '');
+          const para = target.insertParagraph(cleanText, insertLoc);
+          para.styleBuiltIn = Word.BuiltInStyleName.heading3;
+          lastPara = para;
+        } else if (isBullet && hasBold) {
+          // Bullet với bold ở đầu: "**Tên tính năng**: mô tả"
+          const para = target.insertParagraph('', insertLoc);
+          para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
+
+          // Parse: tách phần bold và phần thường
+          const parts = line.replace(/^[-•*]\s*/, '').split(/(\*\*[^*]+\*\*)/g);
+          for (const part of parts) {
+            if (!part) continue;
+            if (part.startsWith('**') && part.endsWith('**')) {
+              const run = para.insertText(part.replace(/\*\*/g, ''), Word.InsertLocation.end);
+              run.bold = true;
+            } else {
+              para.insertText(part, Word.InsertLocation.end);
+            }
+          }
+          lastPara = para;
+        } else if (hasBold) {
+          // Paragraph thường có chứa **bold**
+          const para = target.insertParagraph('', insertLoc);
+
+          const parts = line.split(/(\*\*[^*]+\*\*)/g);
+          for (const part of parts) {
+            if (!part) continue;
+            if (part.startsWith('**') && part.endsWith('**')) {
+              const run = para.insertText(part.replace(/\*\*/g, ''), Word.InsertLocation.end);
+              run.bold = true;
+            } else {
+              para.insertText(part, Word.InsertLocation.end);
+            }
+          }
+          lastPara = para;
+        } else {
+          // Paragraph thường
+          const cleanText = line.replace(/\*\*/g, '');
+          const para = target.insertParagraph(cleanText, insertLoc);
+          lastPara = para;
+        }
+
         await context.sync();
       }
 
-      // Dòng trống cuối để cách với nội dung tiếp theo
-      lastPara.insertParagraph('', Word.InsertLocation.after);
-      await context.sync();
+      // Dòng trống cuối
+      if (lastPara) {
+        lastPara.insertParagraph('', Word.InsertLocation.after);
+        await context.sync();
+      }
     });
   }
 
