@@ -4,24 +4,42 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GreenNode Product Agent</title>
+
+  <!--
+    ════════════════════════════════════════════════════════
+    THƯ VIỆN OFFICE.JS
+    - Đây là SDK chính thức của Microsoft để Add-in giao tiếp
+      với Word (đọc/ghi nội dung, lấy vị trí con trỏ, v.v.)
+    - Phải load từ CDN của Microsoft, không thể tự host
+    ════════════════════════════════════════════════════════
+  -->
   <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+
   <style>
+    /* Reset CSS: xóa margin/padding mặc định của trình duyệt
+       để panel hiển thị nhất quán trong Word */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ── BIẾN MÀU TOÀN CỤC ──
+       Định nghĩa bảng màu một lần, dùng lại ở nhiều chỗ.
+       Thay đổi màu ở đây sẽ ảnh hưởng toàn bộ giao diện */
     :root {
-      --green: #1D9E75;
-      --green-dark: #0F6E56;
-      --green-light: #E1F5EE;
-      --green-border: #9FE1CB;
-      --red-light: #fff5f5;
-      --red-border: #F09595;
-      --red-text: #A32D2D;
-      --border: #e0e0e0;
-      --bg-secondary: #f7f7f7;
-      --text: #1a1a1a;
-      --text-muted: #777;
+      --green: #1D9E75;        /* Màu xanh chủ đạo GreenNode */
+      --green-dark: #0F6E56;   /* Xanh đậm hơn cho hover */
+      --green-light: #E1F5EE;  /* Xanh nhạt cho nền trạng thái thành công */
+      --green-border: #9FE1CB; /* Viền xanh nhạt */
+      --red-light: #fff5f5;    /* Nền đỏ nhạt cho lỗi */
+      --red-border: #F09595;   /* Viền đỏ cho lỗi */
+      --red-text: #A32D2D;     /* Chữ đỏ cho lỗi */
+      --border: #e0e0e0;       /* Viền mặc định */
+      --bg-secondary: #f7f7f7; /* Nền xám nhạt */
+      --text: #1a1a1a;         /* Màu chữ chính */
+      --text-muted: #777;      /* Màu chữ phụ, mờ hơn */
     }
 
+    /* ── KHUNG THÔNG TIN API ──
+       Hiển thị endpoint và model đang dùng,
+       nền xanh nhạt để phân biệt với các phần khác */
     .api-info {
       background: #f0fbf7;
       border: 1px solid #9FE1CB;
@@ -34,6 +52,9 @@
     }
     .api-info strong { font-weight: 600; }
 
+    /* ── BODY ──
+       Font Segoe UI là font mặc định của Windows/Office,
+       giúp panel trông đồng nhất với giao diện Word */
     body {
       font-family: 'Segoe UI', -apple-system, sans-serif;
       font-size: 13px;
@@ -42,6 +63,9 @@
       padding: 14px 16px 24px;
     }
 
+    /* ── HEADER ──
+       Thanh tiêu đề trên cùng với chấm xanh,
+       tên "GreenNode Agent" và label "VNG Cloud docs" */
     .header {
       display: flex;
       align-items: center;
@@ -54,6 +78,9 @@
     .header-title { font-size: 14px; font-weight: 600; }
     .header-sub { margin-left: auto; font-size: 11px; color: var(--text-muted); }
 
+    /* ── NHÃN (LABEL) ──
+       Chữ in hoa nhỏ phía trên các input field,
+       ví dụ: "SẢN PHẨM", "VNG CLOUD API KEY" */
     .label {
       display: block;
       font-size: 11px;
@@ -64,6 +91,9 @@
       margin-bottom: 5px;
     }
 
+    /* ── DROPDOWN CHỌN SẢN PHẨM ──
+       Ẩn mũi tên mặc định của trình duyệt (appearance: none)
+       và tự vẽ mũi tên SVG để đồng nhất trên mọi trình duyệt */
     select {
       width: 100%;
       padding: 8px 30px 8px 10px;
@@ -78,6 +108,8 @@
     }
     select:focus { outline: none; border-color: var(--green); }
 
+    /* ── LINK "THÊM SẢN PHẨM TÙY CHỈNH" ──
+       Hiển thị như link gạch chân, click để mở form thêm sản phẩm */
     .toggle-link {
       font-size: 11px;
       color: var(--green);
@@ -86,6 +118,10 @@
       display: inline-block;
       margin-bottom: 6px;
     }
+
+    /* ── FORM THÊM SẢN PHẨM TÙY CHỈNH ──
+       Mặc định ẩn (display: none), chỉ hiện khi user click
+       "Thêm sản phẩm tùy chỉnh". Khi có class "open" thì hiện */
     .custom-form {
       display: none;
       flex-direction: column;
@@ -103,6 +139,9 @@
     }
     .custom-form input:focus { outline: none; border-color: var(--green); }
     .custom-form-actions { display: flex; gap: 6px; }
+
+    /* ── NÚT NHỎ (TRONG FORM TÙY CHỈNH) ──
+       Nút "Hủy" và "Thêm", class "primary" = nền xanh */
     .btn-sm {
       flex: 1;
       padding: 7px 10px;
@@ -117,19 +156,27 @@
     .btn-sm.primary { background: var(--green); color: #fff; border-color: var(--green); }
     .btn-sm.primary:hover { background: var(--green-dark); }
 
+    /* ── ĐƯỜNG KẺ NGANG ── phân cách các khu vực trong panel */
     hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
 
+    /* ── Ô NHẬP API KEY ──
+       position: relative để đặt nút 👁 (hiện/ẩn key)
+       vào góc phải của ô input */
     .api-row { position: relative; margin-bottom: 12px; }
     .api-row input {
       width: 100%;
-      padding: 8px 36px 8px 10px;
+      padding: 8px 36px 8px 10px; /* padding-right: 36px để tránh đè lên nút 👁 */
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 12px;
-      font-family: monospace;
+      font-family: monospace; /* Font monospace để API key dễ đọc */
       color: var(--text);
     }
     .api-row input:focus { outline: none; border-color: var(--green); }
+
+    /* ── NÚT MẮT 👁 ──
+       Nằm absolute bên phải ô input,
+       click để toggle hiện/ẩn API key */
     .eye-btn {
       position: absolute;
       right: 8px; top: 50%;
@@ -144,6 +191,9 @@
     }
     .api-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
+    /* ── CHỌN NGÔN NGỮ OUTPUT ──
+       2 nút pill "Tiếng Việt" / "English",
+       nút nào đang active thì nền xanh */
     .lang-row {
       display: flex;
       gap: 6px;
@@ -162,6 +212,9 @@
     }
     .lang-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
 
+    /* ── NÚT CHÈN VÀO HỢP ĐỒNG ──
+       Nút chính màu xanh, chiếm full width.
+       Khi disabled (đang xử lý) thì mờ đi và không click được */
     .insert-btn {
       width: 100%;
       padding: 10px;
@@ -182,16 +235,23 @@
     .insert-btn:hover:not(:disabled) { background: var(--green-dark); }
     .insert-btn:disabled { background: #a0c8bc; cursor: not-allowed; }
 
+    /* ── VÒNG XOAY LOADING ──
+       Hiện ra bên trong nút khi đang gọi API,
+       tạo hiệu ứng xoay vô hạn bằng CSS animation */
     .spinner {
       width: 14px; height: 14px;
       border: 2px solid rgba(255,255,255,0.35);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
-      display: none;
+      display: none; /* Ẩn mặc định, chỉ hiện khi loading */
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── HỘP TRẠNG THÁI ──
+       Hiển thị các bước đang xử lý (loading),
+       thành công (success), hoặc lỗi (error).
+       Màu nền thay đổi theo class được thêm vào */
     .status-box {
       border-radius: 6px;
       padding: 10px 12px;
@@ -206,6 +266,9 @@
     .status-box.success { background: var(--green-light); border-color: var(--green); color: #085041; }
     .status-box.error   { background: var(--red-light); border-color: var(--red-border); color: var(--red-text); }
 
+    /* ── CHẤM TRÒN TRẠNG THÁI ──
+       Mỗi bước xử lý có 1 chấm: xám (chờ), xanh nhấp nháy (đang làm),
+       xanh tĩnh (xong), đỏ (lỗi) */
     .step { display: flex; gap: 8px; align-items: flex-start; padding: 2px 0; }
     .dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; background: #ccc; }
     .dot.active { background: var(--green); animation: pulse 1s infinite; }
@@ -213,6 +276,9 @@
     .dot.err    { background: #E24B4A; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+    /* ── LỊCH SỬ ĐÃ CHÈN ──
+       Hiện danh sách các sản phẩm đã chèn trong phiên hiện tại,
+       kèm nút "Chèn lại" để chèn lại không cần gọi API */
     .section-head {
       font-size: 11px;
       font-weight: 600;
@@ -248,12 +314,16 @@
 </head>
 <body>
 
+  <!-- HEADER: Logo chấm xanh + tên agent + label nguồn dữ liệu -->
   <div class="header">
     <div class="header-dot"></div>
     <span class="header-title">GreenNode Agent</span>
     <span class="header-sub">VNG Cloud docs</span>
   </div>
 
+  <!-- DROPDOWN SẢN PHẨM
+       Mỗi option có value dạng "TênSP|URL" - dấu | dùng để tách
+       tên sản phẩm và URL khi xử lý trong JavaScript -->
   <label class="label" for="product-select">Sản phẩm</label>
   <select id="product-select">
     <option value="">-- Chọn sản phẩm --</option>
@@ -271,6 +341,8 @@
     <option value="IAM|https://docs.vngcloud.vn/vng-cloud-document/identity-and-access-management-iam">IAM – Quản lý truy cập</option>
   </select>
 
+  <!-- FORM THÊM SẢN PHẨM TÙY CHỈNH
+       Ẩn mặc định, hiện khi click link "Thêm sản phẩm tùy chỉnh" -->
   <span class="toggle-link" onclick="toggleCustom()">+ Thêm sản phẩm tùy chỉnh</span>
   <div class="custom-form" id="custom-form">
     <input id="custom-name" placeholder="Tên sản phẩm (vd: vFirewall)"/>
@@ -283,33 +355,44 @@
 
   <hr/>
 
+  <!-- CHỌN NGÔN NGỮ OUTPUT: Tiếng Việt hoặc English -->
   <div class="lang-row">
     <span>Ngôn ngữ output:</span>
     <button class="lang-btn active" id="lang-vi" onclick="setLang('vi')">Tiếng Việt</button>
     <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
   </div>
 
-  <label class="label">VNG Cloud API Key</label>
+  <!-- Ô NHẬP API KEY: type="password" để ẩn ký tự, nút 👁 để toggle hiện/ẩn -->
+  <label class="label">Test Change 123
+  </label>
   <div class="api-row">
     <input type="password" id="api-key" placeholder="Nhập VNG Cloud API key..."/>
     <button class="eye-btn" onclick="toggleKey()" title="Hiện/ẩn key">👁</button>
   </div>
   <p class="api-hint">API key nội bộ công ty · Lưu tự động trong máy</p>
 
+  <!-- MODEL ẨN: input hidden lưu tên model dùng khi gọi API
+       Không hiện ra UI nhưng JavaScript đọc được giá trị này -->
   <input type="hidden" id="model-select" value="openai/gpt-oss-20b"/>
+
+  <!-- THÔNG TIN ENDPOINT: hiển thị để user biết đang dùng API nào -->
   <div class="api-info" style="margin-top:6px;">
     <strong>Endpoint:</strong> wordgen.thinhthomas2000.workers.dev &nbsp;·&nbsp; <strong>Model:</strong> openai/gpt-oss-20b
   </div>
 
   <hr/>
 
+  <!-- NÚT CHÈN CHÍNH: có spinner loading bên trong,
+       disabled khi đang xử lý để tránh click nhiều lần -->
   <button class="insert-btn" id="insert-btn" onclick="insertProduct()">
     <div class="spinner" id="spinner"></div>
     <span id="btn-label">Chèn vào hợp đồng</span>
   </button>
 
+  <!-- HỘP TRẠNG THÁI: hiển thị tiến trình và kết quả xử lý -->
   <div class="status-box" id="status-box">Chọn sản phẩm và nhấn "Chèn vào hợp đồng".</div>
 
+  <!-- LỊCH SỬ: ẩn mặc định, hiện sau khi chèn sản phẩm đầu tiên -->
   <div id="history-wrap" style="display:none;">
     <hr/>
     <div class="section-head">Đã chèn trong phiên này</div>
@@ -317,9 +400,13 @@
   </div>
 
 <script>
-  let lang = 'vi';
-  const history = [];
+  // ── BIẾN TOÀN CỤC ──
+  let lang = 'vi';      // Ngôn ngữ hiện tại: 'vi' hoặc 'en'
+  const history = [];   // Mảng lưu lịch sử các sản phẩm đã chèn trong phiên
 
+  // ── KHỞI TẠO KHI OFFICE SẴN SÀNG ──
+  // Office.onReady đợi Word load xong thư viện office.js mới chạy code.
+  // Tại đây ta load lại API key và ngôn ngữ đã lưu từ lần dùng trước.
   Office.onReady(() => {
     const saved = localStorage.getItem('gn_api_key');
     if (saved) document.getElementById('api-key').value = saved;
@@ -327,6 +414,9 @@
     if (savedLang) setLang(savedLang);
   });
 
+  // ── CHUYỂN NGÔN NGỮ ──
+  // Cập nhật biến lang, lưu vào localStorage để nhớ cho lần sau,
+  // đổi class active trên 2 nút, và đổi text nút chèn.
   function setLang(l) {
     lang = l;
     localStorage.setItem('gn_lang', l);
@@ -335,15 +425,22 @@
     document.getElementById('btn-label').textContent = l === 'vi' ? 'Chèn vào hợp đồng' : 'Insert into contract';
   }
 
+  // ── HIỆN/ẨN API KEY ──
+  // Toggle type của input giữa "password" (ẩn) và "text" (hiện)
   function toggleKey() {
     const inp = document.getElementById('api-key');
     inp.type = inp.type === 'password' ? 'text' : 'password';
   }
 
+  // ── MỞ/ĐÓNG FORM THÊM SẢN PHẨM TÙY CHỈNH ──
+  // Toggle class "open" để CSS hiện/ẩn form
   function toggleCustom() {
     document.getElementById('custom-form').classList.toggle('open');
   }
 
+  // ── THÊM SẢN PHẨM TÙY CHỈNH VÀO DROPDOWN ──
+  // Tạo option mới với value "TênSP|URL", thêm vào select,
+  // tự động chọn sản phẩm vừa thêm, rồi đóng form lại.
   function addCustom() {
     const name = document.getElementById('custom-name').value.trim();
     const url  = document.getElementById('custom-url').value.trim();
@@ -359,6 +456,9 @@
     toggleCustom();
   }
 
+  // ── CẬP NHẬT HỘP TRẠNG THÁI ──
+  // content: string (thông báo đơn giản) hoặc array [{text, state}] (nhiều bước)
+  // type: 'loading' | 'success' | 'error' | '' (mặc định xám)
   function setStatus(content, type) {
     const box = document.getElementById('status-box');
     box.className = 'status-box ' + (type || '');
@@ -368,6 +468,9 @@
     ).join('');
   }
 
+  // ── BẬT/TẮT TRẠNG THÁI LOADING ──
+  // Disable nút, hiện spinner, đổi text nút khi đang xử lý.
+  // Gọi setLoading(false) để khôi phục lại sau khi xong.
   function setLoading(on) {
     document.getElementById('insert-btn').disabled = on;
     document.getElementById('spinner').style.display = on ? 'block' : 'none';
@@ -376,32 +479,61 @@
       : (lang === 'vi' ? 'Chèn vào hợp đồng' : 'Insert into contract');
   }
 
+  // ── GỌI API LẤY THÔNG TIN SẢN PHẨM ──
+  // Gửi request đến Cloudflare Worker (proxy) → Worker chuyển tiếp đến
+  // VNG Cloud AI Platform với model gpt-oss-20b.
+  // Prompt yêu cầu model viết đúng format hợp đồng với **bold** markers.
   async function fetchProductInfo(productName, url, apiKey) {
     const model = document.getElementById('model-select').value;
 
+    // System prompt: định nghĩa vai trò của AI
     const systemPrompt = lang === 'vi'
       ? 'Bạn là trợ lý viết hợp đồng chuyên nghiệp. Hãy viết mô tả sản phẩm rõ ràng, súc tích, phù hợp để đưa vào hợp đồng dịch vụ.'
       : 'You are a professional contract writing assistant. Write clear, concise product descriptions suitable for service contracts.';
 
+    // User prompt: yêu cầu cụ thể với template mẫu và quy tắc bắt buộc
+    // Template mẫu giúp model hiểu đúng format cần output
     const userPrompt = lang === 'vi'
       ? `Dựa trên thông tin về sản phẩm "${productName}" của GreenNode VNG Cloud (tham khảo từ ${url}), hãy viết mô tả sản phẩm để đưa vào hợp đồng dịch vụ.
 
-QUAN TRỌNG: Viết theo đúng thứ tự từ trên xuống dưới như sau, KHÔNG đảo ngược:
+Viết theo đúng cấu trúc và thứ tự sau:
 
-1. Tên sản phẩm và mô tả tổng quan (2-3 câu)
-2. Tính năng chính (3-5 điểm, dùng dấu gạch đầu dòng "-")
-3. Cam kết dịch vụ / SLA nổi bật nếu có
+${productName} – [Tên đầy đủ sản phẩm] của GreenNode VNG Cloud
+[Mô tả tổng quan 2-3 câu]
 
-Bắt đầu bằng tên sản phẩm, sau đó mô tả tổng quan, rồi mới đến tính năng và SLA. Viết bằng tiếng Việt, giọng văn chuyên nghiệp.`
+Tính năng chính
+Tên tính năng 1: Mô tả tính năng.
+Tên tính năng 2: Mô tả tính năng.
+Tên tính năng 3: Mô tả tính năng.
+Tên tính năng 4: Mô tả tính năng.
+Tên tính năng 5: Mô tả tính năng.
+
+QUY TẮC BẮT BUỘC:
+- KHÔNG dùng ký tự ** hay markdown bất kỳ
+- KHÔNG thêm đoạn kết luận hay nhận xét ở cuối
+- KHÔNG viết bất kỳ phần nào về SLA, Cam kết dịch vụ, uptime, hỗ trợ kỹ thuật, hay giá trị gia tăng
+- Chỉ viết đúng 2 phần: tiêu đề/tổng quan và Tính năng chính
+- Viết bằng tiếng Việt, giọng văn chuyên nghiệp`
       : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract.
 
-IMPORTANT: Write in this exact order from top to bottom, do NOT reverse:
-1. Product name and overview (2-3 sentences)
-2. Key features (3-5 bullet points using "-")
-3. Notable SLA commitments if available
+Follow this exact structure and order:
 
-Write in professional English.`;
+${productName} – [Full product name] by GreenNode VNG Cloud
+[2-3 sentence overview]
 
+Key Features
+Feature name 1: Description.
+Feature name 2: Description.
+Feature name 3: Description.
+
+MANDATORY RULES:
+- Do NOT use ** or any markdown formatting
+- Do NOT add a concluding paragraph at the end
+- Do NOT include any SLA, Service Commitment, uptime guarantees, support terms, or added value sections
+- Write ONLY 2 sections: the title/overview and Key Features
+- Write in professional English`;
+
+    // Gọi Cloudflare Worker (proxy tránh lỗi CORS từ Word Add-in)
     const res = await fetch('https://wordgen.thinhthomas2000.workers.dev', {
       method: 'POST',
       headers: {
@@ -422,140 +554,80 @@ Write in professional English.`;
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error?.message || `HTTP ${res.status} - Kiểm tra lại API key`);
     }
+
     const data = await res.json();
     let text = data.choices?.[0]?.message?.content?.trim() || 'Không có phản hồi từ model.';
 
-    // Fix reversed output: parse sections by number and sort 1→2→3
-    const lines = text.split('\n');
+    // Sửa output bị đảo ngược: parse section theo số thứ tự rồi ghép lại 1→2→3
+    const lines2 = text.split('\n');
     const sections = { 1: [], 2: [], 3: [] };
     let currentSection = 0;
-
-    for (const line of lines) {
-      const match = line.match(/^\*{0,2}([123])\.\s/);
-      if (match) {
-        currentSection = parseInt(match[1]);
-      }
-      if (currentSection > 0) {
-        sections[currentSection].push(line);
-      }
+    for (const line of lines2) {
+      const match = line.match(/^\*{0,2}([123])\./);
+      if (match) currentSection = parseInt(match[1]);
+      if (currentSection > 0) sections[currentSection].push(line);
     }
-
-    // If sections were detected, reassemble in correct order
     const s1 = sections[1].join('\n').trim();
     const s2 = sections[2].join('\n').trim();
     const s3 = sections[3].join('\n').trim();
-    if (s1 && s2) {
-      text = [s1, s2, s3].filter(Boolean).join('\n\n');
-    }
+    if (s1 && s2) text = [s1, s2, s3].filter(Boolean).join('\n\n');
 
     return text;
   }
 
-  /* ── Insert into Word – format chuẩn theo hợp đồng ── */
+  // ── CHÈN NỘI DUNG VÀO WORD: plain text, Segoe UI 11, không formatting ──
   async function insertIntoWord(productName, content) {
     return Word.run(async (context) => {
       const selection = context.document.getSelection();
-      const lines = content.split('\n').map(l => l.trim()).filter(l => {
-        // Bỏ dòng chỉ là tên sản phẩm ngắn (dòng đầu tiên đơn giản)
+
+      // Xóa ** còn sót, lọc dòng thừa
+      // Lọc bỏ section SLA/Cam kết nếu AI vẫn sinh ra
+      const slaKeywords = ['Cam kết dịch vụ', 'SLA', 'Tỷ lệ uptime', 'Tốc độ tải tệp', 'Hỗ trợ khách hàng',
+        'Thời gian bảo trì', 'Giá trị gia tăng', 'Service Commitment', 'Uptime', 'Support response'];
+      let inSlaSection = false;
+
+      const lines = content.split('\n').map(l => l.replace(/\*\*/g, '').trim()).filter(l => {
+        if (!l) return false;
         if (l === productName) return false;
-        // Bỏ dòng "---" và đoạn chú thích cuối
-        if (/^[-─]{3,}$/.test(l)) return false;
-        if (/^Đoạn mô tả trên/.test(l)) return false;
+        if (/^[-\u2500]{3,}$/.test(l)) return false;
+        if (/^\u0110o\u1ea1n m\u00f4 t\u1ea3 tr\u00ean/.test(l)) return false;
+        // Phát hiện bắt đầu section SLA và bỏ toàn bộ section đó
+        if (slaKeywords.some(kw => l.includes(kw) && l.length < 60)) { inSlaSection = true; }
+        if (inSlaSection) return false;
         return true;
       });
 
       let lastPara = null;
 
-      const insert = (text, loc) => {
-        const target = lastPara || selection;
-        return target.insertParagraph(text, loc || (lastPara ? Word.InsertLocation.after : Word.InsertLocation.before));
-      };
-
       for (const line of lines) {
-        // ── Heading 2 bold: dòng tên sản phẩm đầy đủ có dấu "–" ──
-        const isMainTitle = line.includes('–') && line.includes('GreenNode');
+        const target = lastPara || selection;
+        const loc = lastPara ? Word.InsertLocation.after : Word.InsertLocation.before;
+        const para = target.insertParagraph(line, loc);
 
-        // ── Heading 3: "Tính năng chính" hoặc "Cam kết dịch vụ / SLA" ──
-        const isHeading3 = /^(Tính năng chính|Cam kết dịch vụ|SLA)/i.test(line) ||
-                           /^\*{0,2}(Tính năng chính|Cam kết dịch vụ|SLA)/i.test(line);
+        // Plain Normal paragraph, Segoe UI 11, không bold, không underline
+        para.styleBuiltIn = Word.BuiltInStyleName.normal;
+        para.font.name = 'Segoe UI';
+        para.font.size = 11;
+        para.font.bold = false;
+        para.font.italic = false;
+        para.font.underline = Word.UnderlineType.none;
+        para.font.color = '#000000';
+        para.font.highlightColor = null;
+        para.font.strikeThrough = false;
 
-        // ── Bullet list: bắt đầu bằng "- " hoặc "• " ──
-        const isBullet = /^[-•]\s+/.test(line);
-
-        // ── Dòng có bold trước dấu ":" (tính năng / SLA item) ──
-        // Format: "**Tên tính năng**: mô tả" hoặc "Tên tính năng: mô tả"
-        const boldColonMatch = line.match(/^(\*{0,2})([^:*]{3,40}?)(\*{0,2}):\s*(.+)$/);
-
-        if (isMainTitle) {
-          const cleanText = line.replace(/\*\*/g, '');
-          const para = insert(cleanText);
-          para.styleBuiltIn = Word.BuiltInStyleName.heading2;
-          // Bold toàn bộ
-          para.font.bold = true;
-          lastPara = para;
-
-        } else if (isHeading3) {
-          const cleanText = line.replace(/\*\*/g, '');
-          const para = insert(cleanText);
-          para.styleBuiltIn = Word.BuiltInStyleName.heading3;
-          lastPara = para;
-
-        } else if (isBullet && boldColonMatch) {
-          // Bullet với bold trước ":"
-          const boldPart = boldColonMatch[2].trim();
-          const normalPart = boldColonMatch[4].trim();
-          const para = insert('');
-          para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
-          para.insertText(boldPart + ': ', Word.InsertLocation.start).bold = true;
-          para.insertText(normalPart, Word.InsertLocation.end);
-          lastPara = para;
-
-        } else if (boldColonMatch && boldColonMatch[2].length < 40) {
-          // List item (không có bullet ký tự) với bold trước ":"
-          const boldPart = boldColonMatch[2].trim();
-          const normalPart = boldColonMatch[4].trim();
-          const para = insert('');
-          para.styleBuiltIn = Word.BuiltInStyleName.listParagraph;
-          para.insertText(boldPart + ': ', Word.InsertLocation.start).bold = true;
-          para.insertText(normalPart, Word.InsertLocation.end);
-          lastPara = para;
-
-        } else if (line.includes('**')) {
-          // Dòng thường có **bold** inline
-          const para = insert('');
-          const parts = line.replace(/^[-•]\s*/, '').split(/(\*\*[^*]+\*\*)/g);
-          let isFirst = true;
-          for (const part of parts) {
-            if (!part) continue;
-            if (part.startsWith('**') && part.endsWith('**')) {
-              const run = para.insertText(part.replace(/\*\*/g, ''), isFirst ? Word.InsertLocation.start : Word.InsertLocation.end);
-              run.bold = true;
-            } else {
-              para.insertText(part, isFirst ? Word.InsertLocation.start : Word.InsertLocation.end);
-            }
-            isFirst = false;
-          }
-          lastPara = para;
-
-        } else {
-          // Paragraph thường – text đen
-          const cleanText = line.replace(/\*\*/g, '').replace(/^[-•]\s*/, '');
-          const para = insert(cleanText);
-          lastPara = para;
-        }
-
-        await context.sync();
-      }
-
-      // Dòng trống cuối
-      if (lastPara) {
-        lastPara.insertParagraph('', Word.InsertLocation.after);
+        lastPara = para;
         await context.sync();
       }
     });
   }
 
+  // ── HÀM CHÍNH: XỬ LÝ KHI NHẤN NÚT CHÈN ──
+  // Có 2 chế độ:
+  // 1. overrideName + overrideContent: chèn lại từ lịch sử (không gọi API)
+  // 2. Bình thường: validate input → gọi API → chèn vào Word → lưu lịch sử
   async function insertProduct(overrideName, overrideContent) {
+
+    // Chế độ chèn lại từ lịch sử
     if (overrideName && overrideContent) {
       try {
         setStatus([{ text: `Đang chèn lại ${overrideName}...`, state: 'active' }], 'loading');
@@ -567,16 +639,23 @@ Write in professional English.`;
       return;
     }
 
+    // Validate: phải chọn sản phẩm
     const sel = document.getElementById('product-select').value;
     if (!sel) { setStatus('Vui lòng chọn một sản phẩm.', 'error'); return; }
 
+    // Validate: phải có API key
     const apiKey = document.getElementById('api-key').value.trim();
     if (!apiKey || apiKey.length < 10) { setStatus('Vui lòng nhập VNG Cloud API Key.', 'error'); return; }
 
+    // Lưu API key vào localStorage để nhớ cho lần sau
     localStorage.setItem('gn_api_key', apiKey);
+
+    // Tách tên sản phẩm và URL từ value "TênSP|URL"
     const [productName, productUrl] = sel.split('|');
 
     setLoading(true);
+
+    // Hiển thị các bước xử lý trong hộp trạng thái
     const steps = [
       { text: `Đang tìm thông tin mới nhất về ${productName}...`, state: 'active' },
       { text: 'Đang chèn vào hợp đồng...', state: '' },
@@ -584,20 +663,25 @@ Write in professional English.`;
     setStatus(steps, 'loading');
 
     try {
+      // Bước 1: Gọi AI API lấy nội dung sản phẩm
       const content = await fetchProductInfo(productName, productUrl, apiKey);
 
+      // Cập nhật trạng thái: bước 1 xong, bắt đầu bước 2
       steps[0].state = 'done';
       steps[1].state = 'active';
       setStatus(steps, 'loading');
 
+      // Bước 2: Chèn nội dung vào Word tại vị trí con trỏ
       await insertIntoWord(productName, content);
 
+      // Hoàn thành
       steps[1].state = 'done';
       setStatus(steps, 'success');
 
+      // Lưu vào lịch sử với timestamp
       const now = new Date();
       const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-      history.unshift({ name: productName, content, time: timeStr });
+      history.unshift({ name: productName, content, time: timeStr }); // unshift = thêm vào đầu mảng
       renderHistory();
 
     } catch (e) {
@@ -607,6 +691,10 @@ Write in professional English.`;
     setLoading(false);
   }
 
+  // ── HIỂN THỊ LỊCH SỬ ──
+  // Render tối đa 6 sản phẩm gần nhất.
+  // Nút "Chèn lại" gọi insertProduct với nội dung từ history,
+  // không tốn thêm API call.
   function renderHistory() {
     if (history.length === 0) return;
     document.getElementById('history-wrap').style.display = 'block';
@@ -621,6 +709,9 @@ Write in professional English.`;
     `).join('');
   }
 
+  // ── LẤY NỘI DUNG TỪ LỊCH SỬ ──
+  // Trả về content của sản phẩm tại index i trong mảng history.
+  // Dùng optional chaining (?.) để tránh lỗi nếu index không tồn tại.
   function historyContent(i) {
     return history[i]?.content || '';
   }
