@@ -363,8 +363,7 @@
   </div>
 
   <!-- Ô NHẬP API KEY: type="password" để ẩn ký tự, nút 👁 để toggle hiện/ẩn -->
-  <label class="label">Test Change 123
-  </label>
+  <label class="label">VNG Cloud API KEY TEST</label>
   <div class="api-row">
     <input type="password" id="api-key" placeholder="Nhập VNG Cloud API key..."/>
     <button class="eye-btn" onclick="toggleKey()" title="Hiện/ẩn key">👁</button>
@@ -511,8 +510,7 @@ Tên tính năng 5: Mô tả tính năng.
 QUY TẮC BẮT BUỘC:
 - KHÔNG dùng ký tự ** hay markdown bất kỳ
 - KHÔNG thêm đoạn kết luận hay nhận xét ở cuối
-- KHÔNG viết bất kỳ phần nào về SLA, Cam kết dịch vụ, uptime, hỗ trợ kỹ thuật, hay giá trị gia tăng
-- Chỉ viết đúng 2 phần: tiêu đề/tổng quan và Tính năng chính
+- KHÔNG viết phần "Cam kết dịch vụ", "SLA" hay bất kỳ cam kết uptime/hỗ trợ nào
 - Viết bằng tiếng Việt, giọng văn chuyên nghiệp`
       : `Based on information about "${productName}" by GreenNode VNG Cloud (reference: ${url}), write a product description for a service contract.
 
@@ -529,8 +527,7 @@ Feature name 3: Description.
 MANDATORY RULES:
 - Do NOT use ** or any markdown formatting
 - Do NOT add a concluding paragraph at the end
-- Do NOT include any SLA, Service Commitment, uptime guarantees, support terms, or added value sections
-- Write ONLY 2 sections: the title/overview and Key Features
+- Do NOT include any "SLA", "Service Commitment", uptime guarantees or support terms
 - Write in professional English`;
 
     // Gọi Cloudflare Worker (proxy tránh lỗi CORS từ Word Add-in)
@@ -581,19 +578,11 @@ MANDATORY RULES:
       const selection = context.document.getSelection();
 
       // Xóa ** còn sót, lọc dòng thừa
-      // Lọc bỏ section SLA/Cam kết nếu AI vẫn sinh ra
-      const slaKeywords = ['Cam kết dịch vụ', 'SLA', 'Tỷ lệ uptime', 'Tốc độ tải tệp', 'Hỗ trợ khách hàng',
-        'Thời gian bảo trì', 'Giá trị gia tăng', 'Service Commitment', 'Uptime', 'Support response'];
-      let inSlaSection = false;
-
       const lines = content.split('\n').map(l => l.replace(/\*\*/g, '').trim()).filter(l => {
         if (!l) return false;
         if (l === productName) return false;
         if (/^[-\u2500]{3,}$/.test(l)) return false;
         if (/^\u0110o\u1ea1n m\u00f4 t\u1ea3 tr\u00ean/.test(l)) return false;
-        // Phát hiện bắt đầu section SLA và bỏ toàn bộ section đó
-        if (slaKeywords.some(kw => l.includes(kw) && l.length < 60)) { inSlaSection = true; }
-        if (inSlaSection) return false;
         return true;
       });
 
@@ -611,9 +600,7 @@ MANDATORY RULES:
         para.font.bold = false;
         para.font.italic = false;
         para.font.underline = Word.UnderlineType.none;
-        para.font.color = '#000000';
-        para.font.highlightColor = null;
-        para.font.strikeThrough = false;
+        para.font.color = '000000';
 
         lastPara = para;
         await context.sync();
